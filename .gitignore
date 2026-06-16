@@ -1,0 +1,24 @@
+# Secrets — NEVER commit
+.env
+.env.local
+*.local
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+dist-ssr/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Local Claude Code settings (machine-specific)
+.claude/settings.local.json
+
+# Editor / OS
+.DS_Store
+.vscode/*
+!.vscode/extensions.json
+.idea/

@@ -1,0 +1,27 @@
+{
+  "name": "haven",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "HAVEN — Housing Advice, Validation & Eviction Navigator",
+  "scripts": {
+    "dev": "concurrently -k -n SERVER,WEB -c blue,green \"npm:server\" \"npm:web\"",
+    "server": "node server.js",
+    "web": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "selftest": "node scripts/selftest.mjs"
+  },
+  "dependencies": {
+    "cors": "^2.8.5",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.3.1",
+    "concurrently": "^9.0.1",
+    "vite": "^5.4.8"
+  }
+}
