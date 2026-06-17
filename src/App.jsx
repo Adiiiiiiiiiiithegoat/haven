@@ -41,8 +41,12 @@ export default function App() {
       setMessages([...nextMessages, { role: "assistant", content: parsed.reply }]);
       setReady(Boolean(parsed.readyForOutputs));
     } catch (e) {
+      // Surface the real reason (callLLM throws friendly messages, e.g. rate limit)
+      // instead of always blaming the server.
       setError(
-        "We couldn't reach the assistant. Check the server is running, then try again."
+        e && e.message
+          ? e.message
+          : "We couldn't reach the assistant. Check the server is running, then try again."
       );
     } finally {
       setBusy(false);
