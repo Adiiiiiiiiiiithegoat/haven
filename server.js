@@ -90,8 +90,18 @@ app.post("/api/llm", async (req, res) => {
 
         if (upstream.ok) break; // success
 
-        const retryable = upstream.status === 429 || upstream.status >= 500;
-        if (!retryable) break; // hard error — surface it, don't waste other keys
+        // Decide whether to fall through to the NEXT key:
+        // - 429 (rate limit) and 5xx (upstream hiccup) are transient.
+        // - 401/403 are KEY-SPECIFIC (bad / revoked / blocked key) — the next key
+        //   may still work, so skip to it rather than failing the whole request.
+        // A 400/404/422 etc. is the SAME for every key (bad request shape), so we
+        // surface it immediately instead of burning the remaining keys.
+        const rotate =
+          upstream.status === 429 ||
+          upstream.status === 401 ||
+          upstream.status === 403 ||
+          upstream.status >= 500;
+        if (!rotate) break; // hard request error — surface it, don't waste other keys
 
         if (upstream.status === 429) {
           const wait = retryAfterSeconds(upstream, await upstream.clone().text());
@@ -100,7 +110,9 @@ app.post("/api/llm", async (req, res) => {
         console.log(`[HAVEN] Key ${i + 1} returned ${upstream.status} — trying the next key`);
       }
 
-      // Success, or a hard error we should surface immediately → stop rotating.
+      // Stop rotating on success, a hard request error, or an auth/permission
+      // failure (401/403) — waiting and retrying the same keys won't change those.
+      // Only the transient "every key rate-limited / 5xx" case is worth a 2nd round.
       if (upstream.ok || !(upstream.status === 429 || upstream.status >= 500)) break;
       // Every key was limited. Only wait+retry if the suggested wait is short.
       if (round === MAX_ROUNDS - 1 || shortestWait == null || shortestWait > SHORT_WAIT) break;

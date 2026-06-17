@@ -29,10 +29,13 @@ The "situation" fields you can populate:
 - dateOfThreat: ISO date they expect to ACTUALLY lose the home (drives the 56-day calc), or null
 - localCouncil: name of their local council, or null
 - household: { "adults": number, "children": number, "vulnerabilityOrDisability": string|null } or null  (when asking, say "in your household" not "live with you" — include the user themselves)
+- benefits: { "housingBenefit": boolean, "universalCreditHousingElement": boolean, "detail": string } or null  — whether they ALREADY receive Housing Benefit or the housing element of Universal Credit (this quietly GATES the Crisis & Resilience Fund, which can help with rent, arrears, deposits and moving costs)
 - priorCouncilContact: { "contacted": boolean, "reference": string|null } or null
 - safetyFlag: "none" | "domesticAbuse" | "acuteDistress"
 
 The fields that MATTER MOST for core help: noticeType, dateOfThreat (or claimedLeaveDate to infer it), reasonForThreat. Ask about these if unknown. Do not interrogate — one or two gentle questions per turn, max.
+
+BENEFITS (optional, but worth one light touch): if they haven't already mentioned it, gently check whether they get any help towards their rent — specifically Housing Benefit or the housing element of Universal Credit — because it can quietly unlock real financial help (the Crisis & Resilience Fund). Ask it warmly and make it feel optional, never like a means-test form — e.g. "One quick thing that can open up financial help: do you happen to get any help with your rent at the moment, like Universal Credit or Housing Benefit?". Best woven in once the core picture is forming, or whenever money/arrears come up. It is NOT required — never let it block readiness, and don't ask more than once. Record what they say in the matching flag; if they're unsure whether their Universal Credit includes the housing element, leave universalCreditHousingElement null and note it in "detail" rather than guessing.
 
 When you have enough to produce the core outputs (notice check + timeline + action plan), set "readyForOutputs": true. You can be ready even with some nulls, as long as you know the notice type and roughly when they'd lose the home.
 
@@ -131,24 +134,47 @@ Return STRICT JSON only, this shape:
 // ---------- 1.4 48-hour action plan ----------
 export function actionPlanCall(situation) {
   const system = buildSystemPrompt(
-    `TASK: Produce EXACTLY THREE ordered steps the user should take in the next 48 hours, specific to their situation. Each step has a one-line "why". Where relevant, anchor to triggering council help EARLY (the 56-day prevention duty) rather than waiting. Be concrete and calm.
+    `TASK: Produce EXACTLY THREE ordered steps THIS specific user should take in the next 48 hours. Each step is ONE concrete action they could literally do today, paired with a one-line "why". This is NOT a generic checklist — every step and every "why" must be built from this user's own facts.
+
+USE THEIR ACTUAL SPECIFICS in every step. Draw on, by name and value: their noticeType and the dates on it (noticeDateReceived, claimedLeaveDate); whether that notice looks valid; their statedGround; their arrears (rentArrears.inArrears and rentArrears.detail); their named localCouncil; their household — adults, children, any vulnerabilityOrDisability; whether they receive Housing Benefit or the Universal Credit housing element (the CRF gate); reasonForThreat; any priorCouncilContact; and WHERE THEY ARE IN THE TIMELINE (use the precomputed day-count you are given — do not recompute it). A step like "gather your documents" is ONLY acceptable if made concrete to this user — e.g. "Photograph your Section 8 notice dated 12 June and your last 5 rent statements, since the arrears figure decides which ground applies." Where a step involves another person or body, name them inside the step (their council's housing options team, Shelter, Citizens Advice, their landlord).
+
+ORDER BY THIS USER'S OWN URGENCY — what is most time-sensitive for THEM right now. There is NO fixed template; choose step 1 from their facts:
+- Inside the 56-day window (precomputed day-count ≤ 56) → LEAD with contacting their named council's housing options team to trigger the homelessness PREVENTION DUTY (a housing-needs assessment + a Personalised Housing Plan). Acting now is the whole point; every day waited is help forfeited.
+- Notice looks INVALID (a Section 21 served on/after 1 May 2026, or a Section 8 with a missing/ill-fitting ground or too-short notice period) → LEAD with getting the notice checked for free (Shelter / Citizens Advice / the council), because whether the notice even bites changes everything that follows.
+- In arrears AND receiving Housing Benefit or the UC housing element → raise the CRF (apply via their named council) high, because clearing or reducing the arrears is the lever that can remove the ground being used against them.
+- Outside the 56-day window with a known date → LEAD with assembling their exact evidence and diarising the precise date they become eligible to trigger the council, so they act the MOMENT they are inside the window (too early and the council may turn them away).
+- safetyFlag is "domesticAbuse" or "acuteDistress" → LEAD with safety / emergency support, not tenancy admin.
+Then order steps 2 and 3 by what most reduces THEIR risk next.
+
+EACH "why" must say why THIS step matters for THEM and why NOW — tie it to their countdown, their arrears, their children/vulnerability, or their notice. Never a generic platitude like "this protects your rights."
+
+OMIT anything that does not fit them. If a typical step is irrelevant (no arrears → no payment/CRF step; no notice yet → no notice-verification step; already contacted the council → don't tell them to make first contact), DROP it and use a step that actually matters to them. Still return EXACTLY 3.
+
+When a fact that would drive a step is unknown (null), do NOT invent it: either pick a step that doesn't depend on it, or make the step about pinning that fact down concretely (e.g. "Confirm whether you get the housing element of Universal Credit — it's the gate to the CRF that could clear your arrears"). If the council name is unknown, say "your local council" and fold finding it into the action.
+
+Keep each step tight, calm, and immediately actionable.
 
 Return STRICT JSON only, an object whose "steps" array has EXACTLY 3 items, this shape:
 {
   "steps": [
-    { "step": "imperative action, one sentence", "why": "one short line on why it matters" },
+    { "step": "imperative action, one sentence, built from this user's facts", "why": "one short line on why it matters for THEM, right now" },
     { "step": "...", "why": "..." },
     { "step": "...", "why": "..." }
   ]
 }`
   );
+  const todayISO = new Date().toISOString().slice(0, 10);
   const messages = [
     {
       role: "user",
-      content: `${situationBlock(situation)}\n\nProduce the 3-step 48-hour plan now.`,
+      content: `Today's date is ${todayISO}.\n${clockHint(
+        situation
+      )}\nUse this exact day-count to decide the ORDER of the steps and to anchor each "why".\n${situationBlock(
+        situation
+      )}\n\nProduce the tailored 3-step 48-hour plan now, ordered by THIS user's urgency.`,
     },
   ];
-  return { system, messages, maxTokens: 600 };
+  return { system, messages, maxTokens: 700 };
 }
 
 // ========================= TIER 2 — Reasoning depth =========================
@@ -209,7 +235,11 @@ export function crfPrecheckCall(situation) {
   const system = buildSystemPrompt(
     `TASK: Reason about whether the user MAY qualify for the Crisis and Resilience Fund (CRF) Housing Payments (this replaced Discretionary Housing Payments on 1 April 2026).
 
-The GATE: to qualify you must ALREADY receive Housing Benefit OR the housing element of Universal Credit. If we don't know whether they do, say it depends on that gate. The CRF is discretionary (the council decides) and is applied for VIA THE LOCAL COUNCIL.
+THE GATE: to qualify you must ALREADY receive Housing Benefit OR the housing element of Universal Credit. Read the structured "benefits" field in the situation and let it DRIVE your verdict:
+- benefits.housingBenefit is true OR benefits.universalCreditHousingElement is true -> the gate is MET; set mayQualify to "possibly" (the door is open — but never "you qualify").
+- BOTH are explicitly false -> the gate is NOT met; set mayQualify to "unlikely", and explain plainly that the CRF requires one of these two benefits.
+- benefits is null, or the deciding flag is null/unknown (e.g. they're on Universal Credit but unsure whether it includes the housing element — check benefits.detail) -> set mayQualify to "unclear", say it depends on this gate, and tell them how to check (their UC online journal / award notice, or their Housing Benefit award from the council).
+The CRF is discretionary (the council decides) and is applied for VIA THE LOCAL COUNCIL.
 
 CRITICAL FRAMING: NEVER say "you qualify". Only ever "you may qualify" / "you might be eligible". This is a pre-check, not a decision.
 

@@ -13,6 +13,7 @@ export function createEmptySituation() {
     dateOfThreat: null, // when they expect to actually lose the home (drives 56-day calc)
     localCouncil: null,
     household: null, // { adults: number, children: number, vulnerabilityOrDisability: string | null }
+    benefits: null, // { housingBenefit: boolean|null, universalCreditHousingElement: boolean|null, detail: string|null } — gates CRF eligibility
     priorCouncilContact: null, // { contacted: boolean, reference: string | null }
     region: "England",
     rawUserDescription: "",
