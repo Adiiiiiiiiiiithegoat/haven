@@ -11,7 +11,9 @@ import {
   jargonDecodeCall,
   crfPrecheckCall,
   landlordDraftCall,
+  adviserBriefingCall,
 } from "../domain/prompts.js";
+import { mergeSituation } from "../domain/situation.js";
 import { Loading, ErrorRetry, useLazyCall, asText } from "./_shared.jsx";
 import WontDecide from "./WontDecide.jsx";
 
@@ -51,32 +53,128 @@ function useFocusedCall(buildCall, situation, validate) {
   return { ...state, reload: run };
 }
 
-// ---------- 1.2 Notice validity ----------
+// ---------- 1.2 Notice validity (A1 — verify-before-verdict gate) ----------
+const NOTICE_TYPE_LABELS = {
+  section21: "Section 21",
+  section8: "Section 8",
+  verbal: "Verbal / informal",
+  none: "No formal notice",
+  unknown: "Not sure yet",
+};
+
 function NoticeCheck({ situation }) {
-  const { data, error, loading, reload } = useFocusedCall(
-    noticeCheckCall,
-    situation,
-    (d) => typeof d.verdict === "string"
-  );
+  // The verdict only generates AFTER the user confirms the facts it depends on.
+  const [phase, setPhase] = useState("confirm"); // confirm | result
+  const [noticeType, setNoticeType] = useState(situation.noticeType || "unknown");
+  const [dateServed, setDateServed] = useState(situation.noticeDateReceived || "");
+  const [editing, setEditing] = useState(null); // "type" | "date" | null
+  const { data, error, loading, run } = useLazyCall();
+
+  const afterReform = dateServed ? (dateServed >= "2026-05-01" ? "Yes" : "No") : "Unknown";
+
+  function check() {
+    setEditing(null);
+    setPhase("result");
+    const merged = mergeSituation(situation, {
+      noticeType,
+      noticeDateReceived: dateServed || null,
+    });
+    run(noticeCheckCall(merged), { validate: (d) => typeof d.verdict === "string" });
+  }
+
   return (
     <div className="card">
       <p className="eyebrow">Your notice</p>
-      {loading && <Loading label="Checking your notice" />}
-      {error && <ErrorRetry message={error} onRetry={reload} />}
-      {data && (
+
+      {phase === "confirm" && (
         <>
-          <div className="verdict-head">
-            <h2 style={{ margin: 0 }}>{data.verdict}</h2>
-            {data.confidence && (
-              <span className={`pill ${data.confidence}`}>{data.confidence} confidence</span>
-            )}
-          </div>
-          <p style={{ marginBottom: 0 }}>{data.reasoning}</p>
-          {data.verifyWith && (
-            <p className="verify-note">
-              ✔ This isn't legal advice. Verify it for free with{" "}
-              <strong>{data.verifyWith}</strong>.
-            </p>
+          <p className="confirm-lead">Confirm these before we check your notice:</p>
+          <ul className="confirm-list">
+            <li>
+              <span className="confirm-label">Notice type</span>
+              {editing === "type" ? (
+                <select
+                  className="text-input"
+                  value={noticeType}
+                  onChange={(e) => setNoticeType(e.target.value)}
+                  aria-label="Notice type"
+                >
+                  {Object.entries(NOTICE_TYPE_LABELS).map(([v, l]) => (
+                    <option key={v} value={v}>
+                      {l}
+                    </option>
+                  ))}
+                </select>
+              ) : (
+                <span className="confirm-val">{NOTICE_TYPE_LABELS[noticeType] || "Not sure yet"}</span>
+              )}
+              <button
+                className="confirm-edit"
+                onClick={() => setEditing(editing === "type" ? null : "type")}
+              >
+                {editing === "type" ? "Done" : "Edit"}
+              </button>
+            </li>
+
+            <li>
+              <span className="confirm-label">Date served</span>
+              {editing === "date" ? (
+                <input
+                  className="text-input"
+                  type="date"
+                  value={dateServed}
+                  onChange={(e) => setDateServed(e.target.value)}
+                  aria-label="Date the notice was served"
+                />
+              ) : (
+                <span className="confirm-val">{dateServed || "Not set"}</span>
+              )}
+              <button
+                className="confirm-edit"
+                onClick={() => setEditing(editing === "date" ? null : "date")}
+              >
+                {editing === "date" ? "Done" : "Edit"}
+              </button>
+            </li>
+
+            <li>
+              <span className="confirm-label">Served on/after 1 May 2026</span>
+              <span className="confirm-val">{afterReform}</span>
+            </li>
+          </ul>
+          <button className="btn" onClick={check}>
+            Check my notice →
+          </button>
+        </>
+      )}
+
+      {phase === "result" && (
+        <>
+          {loading && <Loading label="Checking your notice" />}
+          {error && <ErrorRetry message={error} onRetry={check} />}
+          {data && (
+            <>
+              <div className="verdict-head">
+                <h2 style={{ margin: 0 }}>{data.verdict}</h2>
+                {data.confidence && (
+                  <span className={`pill ${data.confidence}`}>{data.confidence} confidence</span>
+                )}
+              </div>
+              <p style={{ marginBottom: 0 }}>{data.reasoning}</p>
+              {data.verifyWith && (
+                <p className="verify-note">
+                  ✔ This isn't legal advice. Verify it for free with{" "}
+                  <strong>{data.verifyWith}</strong>.
+                </p>
+              )}
+              <button
+                className="btn secondary"
+                style={{ marginTop: 14 }}
+                onClick={() => setPhase("confirm")}
+              >
+                Edit details &amp; re-check
+              </button>
+            </>
           )}
         </>
       )}
@@ -395,6 +493,91 @@ function LandlordDrafter({ situation }) {
   );
 }
 
+// ---------- A2. Adviser briefing (take this to a human) ----------
+function AdviserBriefing({ situation }) {
+  const { data, error, loading, started, run } = useLazyCall();
+  const [copied, setCopied] = useState(false);
+
+  const load = () => {
+    setCopied(false);
+    run(adviserBriefingCall(situation), {
+      validate: (d) => Array.isArray(d.summary) && Array.isArray(d.questions),
+    });
+  };
+
+  const copyText = data
+    ? `MY SITUATION\n${(data.summary || [])
+        .map((s) => `- ${asText(s)}`)
+        .join("\n")}\n\nQUESTIONS TO ASK\n${(data.questions || [])
+        .slice(0, 3)
+        .map((q, i) => `${i + 1}. ${asText(q)}`)
+        .join("\n")}`
+    : "";
+
+  const copy = async () => {
+    try {
+      await navigator.clipboard.writeText(copyText);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      /* clipboard may be blocked; the text is selectable anyway */
+    }
+  };
+
+  return (
+    <div className="card">
+      <p className="eyebrow">Take this to an adviser</p>
+      {!started && (
+        <>
+          <p className="muted" style={{ marginTop: 0 }}>
+            A short summary plus 3 questions to bring to Shelter, Citizens Advice or your
+            council.
+          </p>
+          <button className="btn secondary" onClick={load}>
+            Prepare my briefing
+          </button>
+        </>
+      )}
+      {loading && <Loading label="Preparing your briefing" />}
+      {error && <ErrorRetry message={error} onRetry={load} />}
+      {data && (
+        <>
+          <h3 className="sub">Your situation</h3>
+          <ul className="bullets">
+            {(data.summary || []).map((s, i) => (
+              <li key={i}>{asText(s)}</li>
+            ))}
+          </ul>
+          <h3 className="sub">3 questions to ask</h3>
+          <ol className="briefing-q">
+            {(data.questions || []).slice(0, 3).map((q, i) => (
+              <li key={i}>{asText(q)}</li>
+            ))}
+          </ol>
+          <div className="draft-actions">
+            <button className="btn secondary" onClick={copy}>
+              {copied ? "Copied ✓" : "Copy briefing"}
+            </button>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
+
+// ---------- A3. Final decision handed back ----------
+function FinalDecision() {
+  return (
+    <div className="final-decision" role="note">
+      <p className="fd-options">
+        You can challenge the notice, negotiate with your landlord, or start looking — each is
+        a valid path.
+      </p>
+      <p className="fd-yours">This choice is yours to make — ideally with a free adviser.</p>
+    </div>
+  );
+}
+
 export default function Results({ situation, onBack, onGenerateLetter }) {
   return (
     <section aria-label="Your situation">
@@ -424,7 +607,11 @@ export default function Results({ situation, onBack, onGenerateLetter }) {
       <JargonDecoder situation={situation} />
       <LandlordDrafter situation={situation} />
 
+      <p className="group-heading">Before you go</p>
+      <AdviserBriefing situation={situation} />
+
       <WontDecide />
+      <FinalDecision />
     </section>
   );
 }

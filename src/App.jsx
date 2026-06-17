@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { callLLM } from "./api/llm.js";
 import { parseModelJSON } from "./api/parseModelJSON.js";
 import { intakeSystemPrompt } from "./domain/prompts.js";
@@ -21,6 +21,15 @@ export default function App() {
   const [error, setError] = useState(null);
   const [ready, setReady] = useState(false);
   const [opening, setOpening] = useState("");
+
+  // Every new page opens at the very top. The chat is the one exception: it
+  // restores to the bottom (handled by Intake's auto-scroll), so the user lands
+  // exactly where they left off in the conversation.
+  useEffect(() => {
+    if (stage !== "chat") {
+      window.scrollTo(0, 0);
+    }
+  }, [stage]);
 
   // Run one intake turn against the model.
   async function runIntakeTurn(nextMessages, currentSituation) {

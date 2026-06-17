@@ -121,6 +121,6 @@ app.post("/api/llm", async (req, res) => {
   }
 });
 
-app.listen(PORT, () => {
-  console.log(`[HAVEN] Proxy listening on http://localhost:${PORT} (provider: groq)`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`[HAVEN] Proxy listening on http://0.0.0.0:${PORT} (reachable on the local network, provider: groq)`);
 });

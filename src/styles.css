@@ -422,7 +422,7 @@ select.text-input:focus {
   color: var(--ink-soft);
   margin-bottom: 10px;
 }
-.draft-area { min-height: 220px; font-size: 0.95rem; line-height: 1.5; }
+.draft-area { aspect-ratio: 1 / 1; min-height: 0; font-size: 0.95rem; line-height: 1.5; }
 .draft-actions { display: flex; gap: 8px; margin-top: 10px; }
 .draft-actions .btn { width: auto; flex: 1; }
 
@@ -519,4 +519,115 @@ h3.sub {
 
 @media (prefers-reduced-motion: reduce) {
   * { animation: none !important; transition: none !important; }
+}
+
+/* ---------- A1: verify-before-verdict gate ---------- */
+.confirm-lead { font-weight: 600; margin: 0 0 10px; }
+.confirm-list { list-style: none; margin: 0 0 14px; padding: 0; }
+.confirm-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--line);
+  flex-wrap: wrap;
+}
+.confirm-list li:last-child { border-bottom: none; }
+.confirm-label { color: var(--ink-soft); font-size: 0.92rem; flex: 1 1 auto; }
+.confirm-val { font-weight: 600; }
+.confirm-list .text-input { flex: 1 1 150px; width: auto; }
+.confirm-edit {
+  font: inherit;
+  font-size: 0.85rem;
+  font-weight: 600;
+  background: none;
+  border: none;
+  color: var(--brand);
+  cursor: pointer;
+  padding: 8px 10px;
+  min-height: 40px;
+  border-radius: 8px;
+}
+.confirm-edit:hover { background: var(--surface-soft); }
+
+/* ---------- A2: adviser briefing ---------- */
+.briefing-q { margin: 6px 0 0; padding-left: 20px; }
+.briefing-q li { margin-bottom: 6px; }
+
+/* ---------- A3: final decision handed back ---------- */
+.final-decision {
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+  margin: 16px 0;
+}
+.fd-options { margin: 0 0 6px; font-weight: 600; }
+.fd-yours { margin: 0; color: var(--ink-soft); font-size: 0.95rem; }
+
+/* Tap target: handoff call link stays comfortable to tap */
+.handoff-bar a.call { display: inline-flex; align-items: center; min-height: 40px; }
+
+/* ============================================================
+   MOBILE OPTIMISATION (phones ~375–430px). Everything here lives
+   inside the breakpoint, so the desktop experience is untouched.
+   Floors respected: body never below 13px, nothing below 11px.
+   ============================================================ */
+@media (max-width: 480px) {
+  body { font-size: 14px; line-height: 1.5; }
+
+  .app { padding: 0 14px calc(104px + env(safe-area-inset-bottom)); }
+
+  /* Header */
+  .haven-header { padding: 16px 2px 8px; gap: 8px; }
+  .haven-logo { font-size: 1.45rem; }
+
+  /* Welcome */
+  .welcome h1 { font-size: 1.3rem; margin: 6px 0 8px; }
+  .welcome p.lede { font-size: 14px; }
+
+  /* Cards — tighter padding + gaps so more fits on screen */
+  .card { padding: 14px 16px; margin: 12px 0; }
+  .card h2 { font-size: 1.02rem; }
+
+  /* Chat bubbles */
+  .bubble { font-size: 14px; padding: 11px 14px; max-width: 92%; }
+
+  /* 56-day clock */
+  .clock { padding: 14px; }
+  .clock .big { font-size: 2rem; }
+
+  /* Secondary / descriptive text → ~13px */
+  .verify-note,
+  .stage-detail,
+  .ladder-why,
+  .steps .why,
+  .draft-note,
+  .gate-why,
+  .gate-blocked,
+  .say-this,
+  .if-wrong,
+  .muted,
+  .confirm-label,
+  .fd-yours { font-size: 13px; }
+
+  /* Keep the smallest labels at or above the 11px floor */
+  .you-are-here, .tag-closed { font-size: 11px; }
+
+  /* Spacing — tighten vertical rhythm */
+  .group-heading { margin: 20px 2px 2px; }
+  .timeline li { padding-bottom: 14px; }
+  .steps li { padding: 10px 0 10px 46px; }
+  .ladder li { padding: 10px 0; }
+
+  /* Handoff bar — compact; the "why" line may wrap to two lines */
+  .handoff-bar { padding: 12px 14px calc(12px + env(safe-area-inset-bottom)); }
+  .handoff-inner { gap: 10px; }
+  .handoff-text .why { line-height: 1.35; }
+
+  /* Buttons keep a comfortable tap height even with smaller text */
+  .btn { min-height: 46px; }
+
+  /* No horizontal overflow from long pasted strings / URLs */
+  .bubble, .say-this, .draft-area, .confirm-val { overflow-wrap: anywhere; }
 }

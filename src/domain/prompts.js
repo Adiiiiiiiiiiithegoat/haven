@@ -253,6 +253,32 @@ Output the draft as MARKDOWN prose only — NO JSON, no preamble, no commentary.
   return { system, messages, maxTokens: 700, json: false };
 }
 
+// ---------- A2. Adviser briefing (handoff preparation) ----------
+// A short, copy-able briefing the user can take to a free human adviser.
+export function adviserBriefingCall(situation) {
+  const system = buildSystemPrompt(
+    `TASK: Produce a short briefing the user can take to a free human adviser (Shelter, Citizens Advice, or their local council). It must be TERSE and functional — no filler, no padding.
+
+Return STRICT JSON only, this shape:
+{
+  "summary": ["2-3 short factual lines summarising their situation", "..."],
+  "questions": ["specific question to ask the adviser", "...", "..."]
+}
+
+Rules:
+- "summary" has 2-3 short items, each one plain-English line about their actual situation.
+- "questions" has EXACTLY 3 items: specific, useful questions to ask an adviser, accurate to the post-1-May-2026 law and tailored to their facts.
+- No preamble, no closing remarks — just the two arrays.`
+  );
+  const messages = [
+    {
+      role: "user",
+      content: `${situationBlock(situation)}\n\nProduce the adviser briefing now.`,
+    },
+  ];
+  return { system, messages, maxTokens: 500 };
+}
+
 // ============== TIER 3 — Council-duty letter generator suite ==============
 
 const todayLine = () => `Today's date is ${new Date().toISOString().slice(0, 10)}.`;
