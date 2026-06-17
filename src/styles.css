@@ -1,25 +1,25 @@
 :root {
-  --bg: #f4f7f6;
-  --surface: #ffffff;
-  --surface-soft: #eef3f2;
-  --ink: #1c2b2a;
-  --ink-soft: #4a5e5c;
-  --ink-faint: #6f827f;
-  --line: #dde6e4;
-  --brand: #2f6f63;
-  --brand-deep: #1f5249;
-  --brand-soft: #e3efec;
-  --accent: #c8772e;
-  --warn-bg: #fdf3e7;
-  --warn-ink: #8a4b12;
-  --alert-bg: #fbece9;
+  --bg: #faf6ef;            /* warm beige page */
+  --surface: #fffdf9;       /* warm near-white card */
+  --surface-soft: #f1ebdf;  /* warm beige subtle fill */
+  --ink: #1a1a17;           /* warm near-black text */
+  --ink-soft: #5c5c55;      /* warm grey secondary */
+  --ink-faint: #8a8a80;     /* warm grey faint */
+  --line: #e5dfd4;          /* soft warm border */
+  --brand: #1b4332;         /* primary dark green */
+  --brand-deep: #143728;    /* deep green hover/active */
+  --brand-soft: #e9f0ec;    /* soft green tint */
+  --accent: #2d6a4f;        /* green accent / highlights */
+  --warn-bg: #fbf0e2;
+  --warn-ink: #8a5a2b;
+  --alert-bg: #fbece9;      /* safety alert — kept distinct on purpose */
   --alert-ink: #8c2f22;
-  --good: #2f7d4f;
-  --radius: 16px;
-  --radius-sm: 10px;
-  --shadow: 0 1px 2px rgba(28, 43, 42, 0.06), 0 8px 24px rgba(28, 43, 42, 0.06);
+  --good: #2d6a4f;
+  --radius: 14px;
+  --radius-sm: 12px;
+  --shadow: 0 1px 3px rgba(27, 67, 50, 0.06);
   --maxw: 640px;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  font-family: "Outfit", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
 }
 
 * { box-sizing: border-box; }
@@ -31,8 +31,10 @@ body {
   background: var(--bg);
   color: var(--ink);
   font-size: 17px;
-  line-height: 1.55;
+  font-weight: 400;
+  line-height: 1.6;
   -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
 }
 
 .app {
@@ -53,10 +55,10 @@ body {
   flex-wrap: wrap;
 }
 .haven-logo {
-  font-size: 1.5rem;
-  font-weight: 800;
-  letter-spacing: 0.04em;
-  color: var(--brand-deep);
+  font-size: 1.7rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--brand);
   margin: 0;
 }
 .haven-tagline {
@@ -71,20 +73,22 @@ body {
   border: 1px solid var(--line);
   border-radius: var(--radius);
   box-shadow: var(--shadow);
-  padding: 20px;
-  margin: 14px 0;
+  padding: 20px 24px;
+  margin: 16px 0;
 }
 .card h2 {
-  font-size: 1.05rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
   margin: 0 0 6px;
   color: var(--brand-deep);
 }
 .card .eyebrow {
   font-size: 0.72rem;
   text-transform: uppercase;
-  letter-spacing: 0.09em;
-  color: var(--ink-faint);
-  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: #6b7a6f;
+  font-weight: 500;
   margin: 0 0 8px;
 }
 
@@ -95,7 +99,7 @@ body {
   justify-content: center;
   gap: 8px;
   font: inherit;
-  font-weight: 650;
+  font-weight: 600;
   border: none;
   border-radius: var(--radius-sm);
   padding: 14px 20px;
@@ -110,8 +114,8 @@ body {
 .btn:active { transform: translateY(1px); }
 .btn.secondary {
   background: var(--surface);
-  color: var(--brand-deep);
-  border: 1.5px solid var(--line);
+  color: var(--brand);
+  border: 1px solid var(--line);
 }
 .btn.secondary:hover { background: var(--surface-soft); }
 .btn:disabled { opacity: 0.55; cursor: not-allowed; }
@@ -125,8 +129,10 @@ body {
 /* ---------- Welcome ---------- */
 .welcome { padding: 6px 4px 0; }
 .welcome h1 {
-  font-size: 1.55rem;
-  line-height: 1.25;
+  font-size: 1.6rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
   margin: 8px 0 10px;
   color: var(--ink);
 }
@@ -136,13 +142,22 @@ textarea.intake-input, input.text-input {
   width: 100%;
   font: inherit;
   color: var(--ink);
-  border: 1.5px solid var(--line);
+  border: 1px solid var(--line);
   border-radius: var(--radius-sm);
   padding: 14px;
   background: var(--surface);
   resize: vertical;
 }
 textarea.intake-input { min-height: 120px; }
+
+/* Clean green focus ring on inputs (replaces the default browser outline) */
+textarea.intake-input:focus,
+input.text-input:focus,
+select.text-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px rgba(45, 106, 79, 0.12);
+}
 
 /* ---------- Chat ---------- */
 .chat { display: flex; flex-direction: column; gap: 12px; margin: 8px 0 16px; }
@@ -232,7 +247,7 @@ textarea.intake-input { min-height: 120px; }
 .you-are-here {
   display: inline-block;
   font-size: 0.68rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.08em;
   color: var(--accent);
@@ -248,7 +263,7 @@ textarea.intake-input { min-height: 120px; }
 }
 .clock.within { background: var(--brand-soft); border: 1.5px solid #bcdcd4; }
 .clock.outside { background: var(--surface-soft); border: 1.5px solid var(--line); }
-.clock .big { font-size: 2.4rem; font-weight: 800; color: var(--brand-deep); line-height: 1; }
+.clock .big { font-size: 2.4rem; font-weight: 700; color: var(--brand-deep); line-height: 1; }
 .clock .lbl { font-size: 0.9rem; color: var(--ink-soft); margin-top: 6px; }
 .clock .flag {
   display: inline-block;
@@ -285,20 +300,21 @@ textarea.intake-input { min-height: 120px; }
   place-items: center;
   font-size: 0.95rem;
 }
-.steps .what { font-weight: 650; }
+.steps .what { font-weight: 600; }
 .steps .why { color: var(--ink-soft); font-size: 0.92rem; margin-top: 2px; }
 
 /* ---------- Won't-decide principle ---------- */
 .principle {
-  background: var(--surface-soft);
-  border: 1px dashed #c4d3cf;
+  background: var(--brand-soft);
+  border: 1px solid rgba(45, 106, 79, 0.22);
+  border-left: 4px solid var(--accent);
   border-radius: var(--radius);
-  padding: 14px 16px;
-  margin: 14px 0;
+  padding: 16px 18px;
+  margin: 16px 0;
   font-size: 0.95rem;
-  color: var(--ink-soft);
+  color: var(--brand);
 }
-.principle strong { color: var(--ink); }
+.principle strong { color: var(--brand-deep); }
 
 /* ---------- Handoff bar (persistent) ---------- */
 .handoff-bar {
@@ -306,21 +322,21 @@ textarea.intake-input { min-height: 120px; }
   left: 0;
   right: 0;
   bottom: 0;
-  background: var(--brand-deep);
+  background: var(--brand);
   color: #fff;
-  padding: 10px 16px calc(10px + env(safe-area-inset-bottom));
+  padding: 14px 16px calc(14px + env(safe-area-inset-bottom));
   z-index: 50;
 }
 .handoff-inner { max-width: var(--maxw); margin: 0 auto; display: flex; align-items: center; gap: 12px; }
 .handoff-inner .ic { font-size: 1.3rem; }
 .handoff-text { flex: 1; min-width: 0; }
-.handoff-text .org { font-weight: 700; font-size: 0.95rem; }
+.handoff-text .org { font-weight: 600; font-size: 0.95rem; }
 .handoff-text .why { font-size: 0.78rem; opacity: 0.9; line-height: 1.3; }
 .handoff-bar a.call {
   background: #fff;
-  color: var(--brand-deep);
-  font-weight: 700;
-  padding: 9px 14px;
+  color: var(--brand);
+  font-weight: 600;
+  padding: 10px 16px;
   border-radius: var(--radius-sm);
   text-decoration: none;
   white-space: nowrap;
@@ -347,7 +363,7 @@ textarea.intake-input { min-height: 120px; }
   font-size: 0.74rem;
   text-transform: uppercase;
   letter-spacing: 0.1em;
-  font-weight: 800;
+  font-weight: 700;
   color: var(--ink-faint);
 }
 
@@ -373,7 +389,7 @@ textarea.intake-input { min-height: 120px; }
   color: #fff;
 }
 .ladder li.closed .ladder-rank { background: var(--surface-soft); color: var(--ink-faint); }
-.ladder-option { font-weight: 650; }
+.ladder-option { font-weight: 600; }
 .ladder li.closed .ladder-option {
   text-decoration: line-through;
   text-decoration-color: var(--ink-faint);
@@ -384,7 +400,7 @@ textarea.intake-input { min-height: 120px; }
   display: inline-block;
   margin-left: 8px;
   font-size: 0.66rem;
-  font-weight: 800;
+  font-weight: 700;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--warn-ink);
@@ -435,7 +451,7 @@ textarea.intake-input { min-height: 120px; }
 .gate-field { margin-bottom: 16px; }
 .gate-field > label {
   display: block;
-  font-weight: 650;
+  font-weight: 600;
   font-size: 0.95rem;
   margin-bottom: 6px;
 }
