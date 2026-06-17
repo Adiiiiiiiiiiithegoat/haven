@@ -2,6 +2,18 @@
 // receiving the current `situation` as JSON input and returning a specified shape.
 
 import { buildSystemPrompt } from "./systemPrompt.js";
+import { daysUntil } from "./situation.js";
+
+// Compute the 56-day clock in CODE (the model is unreliable at date math) and hand
+// the model an authoritative number to use rather than recompute.
+function clockHint(situation) {
+  const iso = situation.dateOfThreat || situation.claimedLeaveDate;
+  const d = daysUntil(iso);
+  if (d == null) return "The date they would actually lose their home is not yet known.";
+  return `PRECOMPUTED 56-DAY CLOCK (authoritative — use this exact number, do NOT recompute it): the user is ${d} day(s) from losing their home, which is ${
+    d <= 56 ? "WITHIN" : "OUTSIDE"
+  } the 56-day prevention-duty window.`;
+}
 
 // ---------- 1.1 Conversational intake ----------
 // The model maintains a conversation and returns the §3 JSON shape every turn.
@@ -106,7 +118,9 @@ Return STRICT JSON only, this shape:
   const messages = [
     {
       role: "user",
-      content: `Today's date is ${todayISO}.\n${situationBlock(
+      content: `Today's date is ${todayISO}.\n${clockHint(
+        situation
+      )}\nSet "daysUntilThreat" and "within56Days" to match the precomputed clock above.\n${situationBlock(
         situation
       )}\n\nProduce the timeline now.`,
     },
@@ -237,4 +251,116 @@ Output the draft as MARKDOWN prose only — NO JSON, no preamble, no commentary.
     },
   ];
   return { system, messages, maxTokens: 700, json: false };
+}
+
+// ============== TIER 3 — Council-duty letter generator suite ==============
+
+const todayLine = () => `Today's date is ${new Date().toISOString().slice(0, 10)}.`;
+
+// ---------- 3.2 Strength meter ----------
+export function strengthMeterCall(situation) {
+  const system = buildSystemPrompt(
+    `TASK: Honestly assess how STRONG this person's claim on the council's prevention duty is, right now. Be candid — this is a reality check, not a cheerleader.
+
+Key rule: the prevention duty triggers when someone is "threatened with homelessness within 56 days". Use dateOfThreat (or claimedLeaveDate) vs today to judge timing:
+- Clear date AND within 56 days -> stronger. Children / vulnerability in the household strengthen it further.
+- More than 56 days away -> the council MAY say it's too early; say so plainly and explain what to prepare so they can act the moment they're inside the window.
+- Vague or missing date -> weaker; explain what would firm it up.
+
+${todayLine()}
+
+Return STRICT JSON only, this shape:
+{
+  "strength": "strong" | "moderate" | "early-but-prepare" | "weak",
+  "reasoning": "2-4 short plain-English sentences, honest about timing and what helps/hurts",
+  "howToStrengthen": ["short concrete action", "..."]
+}`
+  );
+  const messages = [
+    {
+      role: "user",
+      content: `${clockHint(situation)}\n\n${situationBlock(situation)}\n\nAssess the strength now.`,
+    },
+  ];
+  return { system, messages, maxTokens: 700 };
+}
+
+// ---------- 3.3 The council-duty letter (markdown prose) ----------
+export function councilLetterCall(situation) {
+  const system = buildSystemPrompt(
+    `TASK: Draft a council-duty letter the user will review, edit and send THEMSELVES to their local council's housing options team, asserting the homelessness PREVENTION DUTY. HAVEN never sends it.
+
+HARD REQUIREMENTS (all mandatory):
+1. Include this recognised trigger phrase VERBATIM, word for word: "threatened with homelessness within 56 days".
+2. Include, in substance, this anti-gatekeeping point, framed as rights-based and factual (never as gaming the system): that they are contacting the council NOW, within the 56-day window, because the council owes them the prevention duty at THIS stage — NOT after they are already homeless. This arms a stressed person against being wrongly turned away.
+3. Address it to the named local council's housing options team. Use the user's real facts (reason for threat, the date they'd lose their home, household, any prior contact).
+4. Ask clearly for: a housing-needs assessment and a Personalised Housing Plan.
+5. Where you have had to ASSUME or infer anything not given, flag it INLINE in square brackets like [please check: ...] so the user can verify before sending.
+6. Plain, factual, calm language — NOT amateur legalese. The ONLY verbatim legal phrase is the one in requirement 1.
+
+Output the letter as MARKDOWN prose only — no JSON, no commentary before or after. Include a date line, the council address line, a subject, the body, and a sign-off with [your name] / [your address] placeholders.`
+  );
+  const messages = [
+    {
+      role: "user",
+      content: `${todayLine()}\n${clockHint(situation)}\n${situationBlock(
+        situation
+      )}\n\nWrite the council-duty letter now.`,
+    },
+  ];
+  return { system, messages, maxTokens: 1100, json: false };
+}
+
+// ---------- 3.4 The packet ----------
+export function packetCall(situation) {
+  const system = buildSystemPrompt(
+    `TASK: Build the practical "packet" that goes around the letter, so the user can handle the WHOLE interaction with the council — not just one artifact.
+
+Return STRICT JSON only, this shape:
+{
+  "documents": ["exact document to attach/bring", "..."],
+  "phonePhrase": "the precise sentence to say when they call, that names the duty and the 56-day window",
+  "ifKnockedBack": ["what to do / say if the council wrongly turns them away or delays", "..."]
+}`
+  );
+  const messages = [
+    { role: "user", content: `${situationBlock(situation)}\n\nBuild the packet now.` },
+  ];
+  return { system, messages, maxTokens: 800 };
+}
+
+// ---------- 3.5 Multi-channel (phone + in person; the letter is the written channel) ----------
+export function multiChannelCall(situation) {
+  const system = buildSystemPrompt(
+    `TASK: From the SAME case, produce the spoken channels to match the written letter, so the user can make their case however they reach the council.
+
+The phone script should be about 30 seconds when read aloud, and should name the prevention duty and that they are "threatened with homelessness within 56 days". The talking points are short bullets for an in-person visit.
+
+Return STRICT JSON only, this shape:
+{
+  "phoneScript": "~30-second script in the first person, calm and clear",
+  "talkingPoints": ["short bullet for talking in person", "..."]
+}`
+  );
+  const messages = [
+    { role: "user", content: `${situationBlock(situation)}\n\nProduce the phone script and talking points now.` },
+  ];
+  return { system, messages, maxTokens: 800 };
+}
+
+// ---------- 3.6 "What happens next" simulator ----------
+export function whatHappensNextCall(situation) {
+  const system = buildSystemPrompt(
+    `TASK: Walk the user through the LIKELY sequence after they contact the council, so they can tell whether they're being treated correctly. Include: the council should assess them and produce a Personalised Housing Plan; if they DON'T (or try to turn the user away), what pushing back looks like and when to call Shelter.
+
+Return STRICT JSON only, this shape:
+{
+  "steps": [ { "stage": "short label", "detail": "one plain-English line", "ifItGoesWrong": "what to do if this step doesn't happen properly (or empty string)" }, ... ],
+  "redFlags": ["a sign the council is not treating you correctly", "..."]
+}`
+  );
+  const messages = [
+    { role: "user", content: `${situationBlock(situation)}\n\nProduce the what-happens-next walkthrough now.` },
+  ];
+  return { system, messages, maxTokens: 900 };
 }

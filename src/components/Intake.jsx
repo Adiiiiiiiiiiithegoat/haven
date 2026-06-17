@@ -49,9 +49,15 @@ export default function Intake({ messages, onSend, busy, error, ready, onSeeResu
         </div>
       )}
 
-      {ready && (
-        <button className="btn" onClick={onSeeResults} style={{ marginBottom: 12 }}>
-          See your situation →
+      {messages.some((m) => m.role === "assistant") && (
+        <button
+          className={`btn ${ready ? "" : "secondary"}`}
+          onClick={onSeeResults}
+          style={{ marginBottom: 12 }}
+        >
+          {ready
+            ? "See your situation & options →"
+            : "Skip ahead — see my situation & options →"}
         </button>
       )}
 

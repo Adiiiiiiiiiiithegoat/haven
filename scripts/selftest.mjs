@@ -13,9 +13,45 @@ import {
   jargonDecodeCall,
   crfPrecheckCall,
   landlordDraftCall,
+  strengthMeterCall,
+  councilLetterCall,
+  packetCall,
+  multiChannelCall,
+  whatHappensNextCall,
 } from "../src/domain/prompts.js";
 import { parseModelJSON, extractText } from "../src/api/parseModelJSON.js";
 import { createEmptySituation, mergeSituation } from "../src/domain/situation.js";
+import { letterGateStatus } from "../src/domain/letterSlots.js";
+
+// ISO date N days from today (for prebuilt Tier 3 cases).
+function inDays(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().slice(0, 10);
+}
+function fullCase(overrides = {}) {
+  return mergeSituation(createEmptySituation(), {
+    noticeType: "none",
+    reasonForThreat: "My fixed-term tenancy is ending and I have nowhere else to go.",
+    dateOfThreat: inDays(40),
+    localCouncil: "Manchester City Council",
+    household: { adults: 1, children: 2, vulnerabilityOrDisability: null },
+    priorCouncilContact: { contacted: false, reference: null },
+    rawUserDescription: "fixed term ending, nowhere to go, two kids",
+    ...overrides,
+  });
+}
+function antiGatekeepingPresent(text) {
+  const t = (text || "").toLowerCase();
+  if (!t.includes("prevention duty")) return false;
+  return (
+    /not\s+(after|once|until|when)[^.]{0,60}homeless/.test(t) ||
+    t.includes("before i am homeless") ||
+    t.includes("before i'm homeless") ||
+    t.includes("before becoming homeless") ||
+    t.includes("at this stage")
+  );
+}
 
 const API_KEY = process.env.GROQ_API_KEY;
 const MODEL = process.env.HAVEN_MODEL || "llama-3.3-70b-versatile";
@@ -46,7 +82,7 @@ async function groq(system, messages, maxTokens = 1200, json = true, attempt = 0
     body: JSON.stringify(body),
   });
 
-  if (res.status === 429 && attempt < 6) {
+  if (res.status === 429 && attempt < 8) {
     const retryAfter = Number(res.headers.get("retry-after"));
     const errBody = await res.text();
     const m = errBody.match(/try again in ([\d.]+)s/);
@@ -213,14 +249,78 @@ const SCENARIOS = [
       check("intake reply leads with safety (not routine tenancy)", lc(s.intakeJSON.reply).includes("safe") || lc(s.intakeJSON.reply).includes("999") || lc(s.intakeJSON.reply).includes("danger"));
     },
   },
+  {
+    id: 7,
+    desc: "Tier 3 — council-duty letter suite (prebuilt strong case: 40 days, 2 kids)",
+    prebuilt: fullCase(),
+    async test(s) {
+      // 3.1 gating logic — pure function
+      check("gate: full case is 5/5 (allFilled)", letterGateStatus(s.situation).allFilled === true);
+      const missingOne = mergeSituation(s.situation, { dateOfThreat: null });
+      check("gate: missing date is NOT allFilled (refuses to guess)", letterGateStatus(missingOne).allFilled === false);
+      check("gate: missing date reported as 4/5", letterGateStatus(missingOne).filledCount === 4, String(letterGateStatus(missingOne).filledCount));
+
+      // 3.2 strength meter
+      const strong = await runOutput(strengthMeterCall, s.situation);
+      if (check("strength meter parsed", strong && typeof strong.strength === "string")) {
+        check("strength meter gives reasoning", typeof strong.reasoning === "string" && strong.reasoning.length > 0);
+        check("strength meter lists how to strengthen", Array.isArray(strong.howToStrengthen));
+      }
+
+      // 3.3 the letter (prose)
+      const letter = await runText(councilLetterCall(s.situation));
+      const L = lc(letter);
+      check("letter includes verbatim 'threatened with homelessness within 56 days'", L.includes("threatened with homelessness within 56 days"));
+      check("letter contains the anti-gatekeeping point (rights-based)", antiGatekeepingPresent(letter));
+      check("letter addresses the named council", L.includes("manchester"));
+      check("letter asks for a Personalised Housing Plan / assessment", L.includes("personalised housing plan") || L.includes("personalized housing plan") || L.includes("assessment"));
+      check("letter does NOT describe old no-fault as current", forbidsOldLaw(letter));
+
+      // 3.4 the packet
+      const packet = await runOutput(packetCall, s.situation);
+      if (check("packet parsed", packet && Array.isArray(packet.documents))) {
+        check("packet has documents to attach", packet.documents.length > 0);
+        check("packet has a phone phrase", typeof packet.phonePhrase === "string" && packet.phonePhrase.length > 0);
+        check("packet has 'if knocked back' guidance", Array.isArray(packet.ifKnockedBack) && packet.ifKnockedBack.length > 0);
+      }
+
+      // 3.5 multi-channel
+      const mc = await runOutput(multiChannelCall, s.situation);
+      if (check("multi-channel parsed", mc && typeof mc.phoneScript === "string")) {
+        check("phone script is non-trivial (~30s)", mc.phoneScript.trim().length > 80);
+        check("in-person talking points present", Array.isArray(mc.talkingPoints) && mc.talkingPoints.length > 0);
+      }
+
+      // 3.6 what happens next
+      const wn = await runOutput(whatHappensNextCall, s.situation);
+      if (check("what-happens-next parsed", wn && Array.isArray(wn.steps))) {
+        const blob = lc(wn);
+        check("walkthrough names assessment / Personalised Housing Plan", blob.includes("assess") || blob.includes("personalised housing plan") || blob.includes("housing plan"));
+      }
+    },
+  },
+  {
+    id: "4b",
+    desc: "Tier 3 — strength meter on an early case (75 days out → 'may be too early')",
+    prebuilt: fullCase({ dateOfThreat: inDays(75) }),
+    async test(s) {
+      const early = await runOutput(strengthMeterCall, s.situation);
+      if (check("strength meter parsed", early && typeof early.strength === "string")) {
+        const blob = lc(early.strength) + " " + lc(early.reasoning);
+        check("flags it may be TOO EARLY (outside 56 days)", blob.includes("early"), `${early.strength}: ${String(early.reasoning).slice(0, 80)}`);
+      }
+    },
+  },
 ];
 
 (async () => {
-  console.log(`\nHAVEN Tier-1 + Tier-2 self-test — model: ${MODEL}\n`);
+  console.log(`\nHAVEN full self-test (Tiers 1-3) — model: ${MODEL}\n`);
   for (const sc of SCENARIOS) {
     console.log(`Scenario ${sc.id}: "${sc.desc}"`);
     try {
-      const s = await intake(sc.desc);
+      const s = sc.prebuilt
+        ? { situation: sc.prebuilt, intakeJSON: {} }
+        : await intake(sc.desc);
       await sc.test(s);
     } catch (e) {
       check(`scenario ${sc.id} ran without error`, false, String(e.message || e).slice(0, 300));
@@ -229,7 +329,7 @@ const SCENARIOS = [
     await sleep(4000); // ease off the free-tier per-minute token budget
   }
   if (failures === 0) {
-    console.log("🎉 All Tier-1 + Tier-2 self-tests passed.\n");
+    console.log("🎉 All self-tests passed (Tiers 1-3).\n");
     process.exit(0);
   } else {
     console.log(`⚠️  ${failures} check(s) failed.\n`);

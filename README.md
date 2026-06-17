@@ -55,6 +55,18 @@ against the real prompts. Needs `GROQ_API_KEY` in `.env`. Exits non-zero on fail
 
 ## Status
 
-Tier 1 (core product) and Tier 2 (reasoning depth — options ladder, jargon decoder,
-CRF eligibility pre-check, landlord message drafter) are built and self-tested. Tier 3 is
-not yet started.
+All three tiers are built and self-tested:
+
+- **Tier 1 — core:** conversational intake, notice validity check, timeline + 56-day clock,
+  48-hour action plan, persistent context-aware handoff, confidence framing, "what we
+  won't decide".
+- **Tier 2 — reasoning depth:** options ladder (closed routes crossed off), jargon decoder,
+  CRF eligibility pre-check, landlord message drafter.
+- **Tier 3 — council-duty letter suite:** gated generation (won't draft until all 5 facts
+  are supplied), honest strength meter, the letter (with the verbatim "threatened with
+  homelessness within 56 days" trigger phrase and the rights-based anti-gatekeeping line),
+  the packet (documents / phone phrase / if knocked back), multi-channel (phone script +
+  in-person talking points), and a "what happens next" simulator.
+
+The 56-day clock is computed in code (`daysUntil`) and handed to the model, so date logic
+never depends on the LLM's arithmetic.

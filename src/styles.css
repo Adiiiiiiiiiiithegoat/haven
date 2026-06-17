@@ -410,6 +410,81 @@ textarea.intake-input { min-height: 120px; }
 .draft-actions { display: flex; gap: 8px; margin-top: 10px; }
 .draft-actions .btn { width: auto; flex: 1; }
 
+/* ---------- Tier 3: showpiece CTA ---------- */
+.feature-cta {
+  background: linear-gradient(160deg, var(--brand-soft), #fff);
+  border-color: #bcdcd4;
+}
+
+/* ---------- Tier 3: gating panel ---------- */
+.gate-progress { display: flex; align-items: center; gap: 12px; margin: 14px 0 18px; }
+.gate-bar {
+  flex: 1;
+  height: 10px;
+  background: var(--surface-soft);
+  border-radius: 999px;
+  overflow: hidden;
+}
+.gate-bar span {
+  display: block;
+  height: 100%;
+  background: var(--brand);
+  transition: width 0.25s ease;
+}
+.gate-progress strong { font-size: 0.9rem; color: var(--brand-deep); white-space: nowrap; }
+.gate-field { margin-bottom: 16px; }
+.gate-field > label {
+  display: block;
+  font-weight: 650;
+  font-size: 0.95rem;
+  margin-bottom: 6px;
+}
+.gate-row { display: flex; gap: 8px; }
+.gate-row .text-input { width: 100%; }
+.gate-why {
+  margin: 6px 0 0;
+  font-size: 0.84rem;
+  color: var(--ink-faint);
+}
+select.text-input { -webkit-appearance: none; appearance: none; background: var(--surface); }
+.gate-blocked {
+  background: var(--warn-bg);
+  border: 1px solid #ecceA0;
+  color: var(--warn-ink);
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  margin: 6px 0 14px;
+}
+.gate-blocked ul { margin: 8px 0 0; padding-left: 18px; }
+.gate-blocked li { margin-bottom: 6px; }
+
+/* ---------- Tier 3: shared output bits ---------- */
+.bullets { margin: 6px 0 0; padding-left: 20px; }
+.bullets li { margin-bottom: 6px; color: var(--ink-soft); }
+h3.sub {
+  font-size: 0.95rem;
+  margin: 16px 0 6px;
+  color: var(--brand-deep);
+}
+.say-this {
+  margin: 0;
+  background: var(--brand-soft);
+  border-left: 4px solid var(--brand);
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  padding: 12px 14px;
+  font-size: 0.98rem;
+  white-space: pre-wrap;
+}
+.if-wrong {
+  margin-top: 6px;
+  font-size: 0.88rem;
+  color: var(--warn-ink);
+  background: var(--warn-bg);
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+}
+
 .dots span {
   display: inline-block; width: 6px; height: 6px; margin: 0 2px;
   background: var(--ink-faint); border-radius: 50%;

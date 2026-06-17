@@ -1,6 +1,6 @@
 // Results view — renders Tier 1 outputs as clean components (not a chat wall).
 // Each output is its OWN focused call (§3). They run in parallel and render as they land.
-import React, { useEffect, useState, useCallback } from "react";
+import React, { useEffect, useState } from "react";
 import { callLLM } from "../api/llm.js";
 import { parseModelJSON } from "../api/parseModelJSON.js";
 import {
@@ -12,6 +12,7 @@ import {
   crfPrecheckCall,
   landlordDraftCall,
 } from "../domain/prompts.js";
+import { Loading, ErrorRetry, useLazyCall } from "./_shared.jsx";
 import WontDecide from "./WontDecide.jsx";
 
 // Generic loader for one focused JSON call. Returns {data, error, loading, reload}.
@@ -43,70 +44,6 @@ function useFocusedCall(buildCall, situation, validate) {
   }, []);
 
   return { ...state, reload: run };
-}
-
-// On-demand call (user triggers it). Handles JSON or prose (json:false) calls.
-// run(callSpec, { parse, validate }) — parse=false returns raw text in `data`.
-function useLazyCall() {
-  const [state, setState] = useState({
-    data: null,
-    error: null,
-    loading: false,
-    started: false,
-  });
-
-  const run = useCallback(async (callSpec, { parse = true, validate } = {}) => {
-    setState({ data: null, error: null, loading: true, started: true });
-    try {
-      const { system, messages, maxTokens, json } = callSpec;
-      const text = await callLLM(messages, system, { maxTokens, json });
-      if (!parse) {
-        setState({ data: text, error: null, loading: false, started: true });
-        return;
-      }
-      const parsed = parseModelJSON(text);
-      if (!parsed || (validate && !validate(parsed))) {
-        setState({
-          data: null,
-          error: "We couldn't read that result. Try again in a moment.",
-          loading: false,
-          started: true,
-        });
-        return;
-      }
-      setState({ data: parsed, error: null, loading: false, started: true });
-    } catch (e) {
-      setState({ data: null, error: String(e.message || e), loading: false, started: true });
-    }
-  }, []);
-
-  return { ...state, run };
-}
-
-function Loading({ label }) {
-  return (
-    <p className="loading">
-      {label}{" "}
-      <span className="dots">
-        <span></span>
-        <span></span>
-        <span></span>
-      </span>
-    </p>
-  );
-}
-
-function ErrorRetry({ message, onRetry }) {
-  return (
-    <div className="error-box" role="alert">
-      {message}
-      <div style={{ marginTop: 8 }}>
-        <button className="btn secondary" onClick={onRetry}>
-          Try again
-        </button>
-      </div>
-    </div>
-  );
 }
 
 // ---------- 1.2 Notice validity ----------
@@ -453,7 +390,7 @@ function LandlordDrafter({ situation }) {
   );
 }
 
-export default function Results({ situation, onBack }) {
+export default function Results({ situation, onBack, onGenerateLetter }) {
   return (
     <section aria-label="Your situation">
       <button className="btn secondary" onClick={onBack} style={{ marginBottom: 6 }}>
@@ -462,6 +399,19 @@ export default function Results({ situation, onBack }) {
       <NoticeCheck situation={situation} />
       <Timeline situation={situation} />
       <ActionPlan situation={situation} />
+
+      {/* Tier 3 showpiece entry point */}
+      <div className="card feature-cta">
+        <p className="eyebrow">The big one</p>
+        <h2 style={{ marginTop: 0 }}>Get the council to act — in writing</h2>
+        <p style={{ marginTop: 0 }}>
+          Build a council-duty letter that asserts the help you're legally owed, plus a
+          phone script, a document checklist and what to do if you're turned away.
+        </p>
+        <button className="btn" onClick={onGenerateLetter}>
+          Build my council-duty toolkit →
+        </button>
+      </div>
 
       <p className="group-heading">Go deeper</p>
       <OptionsLadder situation={situation} />

@@ -8,12 +8,13 @@ import {
 } from "./domain/situation.js";
 import Intake from "./components/Intake.jsx";
 import Results from "./components/Results.jsx";
+import LetterSuite from "./components/LetterSuite.jsx";
 import SafetyBanner from "./components/SafetyBanner.jsx";
 import HandoffBar from "./components/HandoffBar.jsx";
 import WontDecide from "./components/WontDecide.jsx";
 
 export default function App() {
-  const [stage, setStage] = useState("welcome"); // welcome | chat | results
+  const [stage, setStage] = useState("welcome"); // welcome | chat | results | letter
   const [messages, setMessages] = useState([]); // [{role, content}] — content is natural language
   const [situation, setSituation] = useState(createEmptySituation());
   const [busy, setBusy] = useState(false);
@@ -65,6 +66,11 @@ export default function App() {
     const next = [...messages, { role: "user", content: text }];
     setMessages(next);
     runIntakeTurn(next, situation);
+  }
+
+  // Tier 3 gating fills missing facts; merge them into the master situation.
+  function onUpdateSituation(update) {
+    setSituation((s) => mergeSituation(s, update));
   }
 
   return (
@@ -120,7 +126,19 @@ export default function App() {
       )}
 
       {stage === "results" && (
-        <Results situation={situation} onBack={() => setStage("chat")} />
+        <Results
+          situation={situation}
+          onBack={() => setStage("chat")}
+          onGenerateLetter={() => setStage("letter")}
+        />
+      )}
+
+      {stage === "letter" && (
+        <LetterSuite
+          situation={situation}
+          onUpdateSituation={onUpdateSituation}
+          onBack={() => setStage("results")}
+        />
       )}
 
       <HandoffBar situation={situation} />
