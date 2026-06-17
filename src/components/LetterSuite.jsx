@@ -190,17 +190,20 @@ function GatingPanel({ situation, onSubmit }) {
       </div>
 
       <div className="gate-field">
-        <label htmlFor="g-contacted">Have you contacted the council about this already?</label>
-        <select
-          id="g-contacted"
-          className="text-input"
-          value={contacted}
-          onChange={(e) => setContacted(e.target.value)}
-        >
-          <option value="">Choose…</option>
-          <option value="no">No, not yet</option>
-          <option value="yes">Yes, I have</option>
-        </select>
+        <label>Have you contacted the council about this already?</label>
+        <div className="toggle-group" role="group" aria-label="Council contact">
+          {[{ v: "no", label: "No, not yet" }, { v: "yes", label: "Yes, I have" }].map(({ v, label }) => (
+            <button
+              key={v}
+              type="button"
+              className={contacted === v ? "btn toggle-btn toggle-btn--active" : "btn secondary toggle-btn"}
+              onClick={() => setContacted(v)}
+              aria-pressed={contacted === v}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
         {contacted === "yes" && (
           <input
             className="text-input"

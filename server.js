@@ -9,14 +9,24 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const PORT = process.env.PORT || 8787;
-const API_KEY = process.env.GROQ_API_KEY;
 const DEFAULT_MODEL = process.env.HAVEN_MODEL || "llama-3.3-70b-versatile";
 const GROQ_URL = "https://api.groq.com/openai/v1/chat/completions";
 
-if (!API_KEY) {
+// Collect all configured keys: GROQ_API_KEY_1..4, then GROQ_API_KEY as fallback.
+const API_KEYS = [
+  process.env.GROQ_API_KEY_1,
+  process.env.GROQ_API_KEY_2,
+  process.env.GROQ_API_KEY_3,
+  process.env.GROQ_API_KEY_4,
+  process.env.GROQ_API_KEY,
+].filter(Boolean);
+
+if (API_KEYS.length === 0) {
   console.error(
-    "\n[HAVEN] GROQ_API_KEY is missing. Copy .env.example to .env and add your key.\n"
+    "\n[HAVEN] No API keys found. Set GROQ_API_KEY or GROQ_API_KEY_1..4 in .env.\n"
   );
+} else {
+  console.log(`[HAVEN] ${API_KEYS.length} API key(s) configured.`);
 }
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -34,14 +44,14 @@ app.use(cors());
 app.use(express.json({ limit: "1mb" }));
 
 app.get("/api/health", (_req, res) => {
-  res.json({ ok: true, keyConfigured: Boolean(API_KEY), provider: "groq" });
+  res.json({ ok: true, keysConfigured: API_KEYS.length, provider: "groq" });
 });
 
 // Neutral request shape: { system, messages:[{role,content}], model?, max_tokens?, json? }
 // Mapped to Groq/OpenAI: system becomes the first message; json -> response_format.
 app.post("/api/llm", async (req, res) => {
-  if (!API_KEY) {
-    return res.status(500).json({ error: "Server missing GROQ_API_KEY." });
+  if (API_KEYS.length === 0) {
+    return res.status(500).json({ error: "Server has no API keys configured." });
   }
   try {
     const { system, messages, model, max_tokens, json } = req.body || {};
@@ -54,34 +64,54 @@ app.post("/api/llm", async (req, res) => {
       max_tokens: max_tokens || 1500,
       messages: chatMessages,
     };
-    // JSON mode forces strictly-valid JSON output (object top-level).
     if (json !== false) body.response_format = { type: "json_object" };
 
-    // Up to 2 automatic retries, but ONLY when Groq's suggested wait is short
-    // (transient per-minute limit). Long waits (daily cap) return promptly so the
-    // UI can show a friendly "try again later" instead of hanging.
+    // Try each key in order. On 429 or 5xx, move to the next key immediately —
+    // no sleep needed since a fresh key has its own quota. A hard error (e.g. 400
+    // bad request, 401 bad key) is surfaced at once rather than burning every key.
+    // If EVERY key is rate-limited with a short suggested wait, wait once and run
+    // the rotation a second time before giving up.
     const SHORT_WAIT = 8;
+    const MAX_ROUNDS = 2;
     let upstream;
-    for (let attempt = 0; attempt <= 2; attempt++) {
-      upstream = await fetch(GROQ_URL, {
-        method: "POST",
-        headers: {
-          "content-type": "application/json",
-          authorization: `Bearer ${API_KEY}`,
-        },
-        body: JSON.stringify(body),
-      });
-      if (upstream.status !== 429 || attempt === 2) break;
-      const txt = await upstream.clone().text();
-      const wait = retryAfterSeconds(upstream, txt);
-      if (wait == null || wait > SHORT_WAIT) break; // don't hang on long/daily limits
-      console.log(`[HAVEN] 429 — retrying in ${wait}s (attempt ${attempt + 1})`);
-      await sleep((wait + 0.5) * 1000);
+
+    for (let round = 0; round < MAX_ROUNDS; round++) {
+      let shortestWait = null;
+
+      for (let i = 0; i < API_KEYS.length; i++) {
+        upstream = await fetch(GROQ_URL, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${API_KEYS[i]}`,
+          },
+          body: JSON.stringify(body),
+        });
+
+        if (upstream.ok) break; // success
+
+        const retryable = upstream.status === 429 || upstream.status >= 500;
+        if (!retryable) break; // hard error — surface it, don't waste other keys
+
+        if (upstream.status === 429) {
+          const wait = retryAfterSeconds(upstream, await upstream.clone().text());
+          if (wait != null && (shortestWait == null || wait < shortestWait)) shortestWait = wait;
+        }
+        console.log(`[HAVEN] Key ${i + 1} returned ${upstream.status} — trying the next key`);
+      }
+
+      // Success, or a hard error we should surface immediately → stop rotating.
+      if (upstream.ok || !(upstream.status === 429 || upstream.status >= 500)) break;
+      // Every key was limited. Only wait+retry if the suggested wait is short.
+      if (round === MAX_ROUNDS - 1 || shortestWait == null || shortestWait > SHORT_WAIT) break;
+      console.log(`[HAVEN] All keys limited — waiting ${shortestWait}s, then retrying`);
+      await sleep((shortestWait + 0.5) * 1000);
     }
 
-    const data = await upstream.json();
+    // Read the final response body exactly once (success or failure).
+    const data = await upstream.json().catch(() => ({}));
     if (!upstream.ok) {
-      console.error("[HAVEN] Groq error:", upstream.status, data && data.error);
+      console.error("[HAVEN] Upstream failed after all keys. Status:", upstream.status, data?.error);
       return res.status(upstream.status).json({ error: data });
     }
     res.json(data);

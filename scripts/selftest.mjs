@@ -53,11 +53,16 @@ function antiGatekeepingPresent(text) {
   );
 }
 
-const API_KEY = process.env.GROQ_API_KEY;
+const API_KEY =
+  process.env.GROQ_API_KEY ||
+  process.env.GROQ_API_KEY_1 ||
+  process.env.GROQ_API_KEY_2 ||
+  process.env.GROQ_API_KEY_3 ||
+  process.env.GROQ_API_KEY_4;
 const MODEL = process.env.HAVEN_MODEL || "llama-3.3-70b-versatile";
 
 if (!API_KEY) {
-  console.error("\n[selftest] GROQ_API_KEY missing in .env — cannot run.\n");
+  console.error("\n[selftest] No API key in .env (set GROQ_API_KEY or GROQ_API_KEY_1..4) — cannot run.\n");
   process.exit(2);
 }
 

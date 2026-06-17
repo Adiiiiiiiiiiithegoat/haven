@@ -463,6 +463,13 @@ select.text-input:focus {
   color: var(--ink-faint);
 }
 select.text-input { -webkit-appearance: none; appearance: none; background: var(--surface); }
+.toggle-group { display: flex; gap: 0; }
+.toggle-btn { flex: 1; border-radius: 0; width: auto; font-size: 0.95rem; padding: 11px 16px; }
+.toggle-btn:first-child { border-radius: var(--radius-sm) 0 0 var(--radius-sm); }
+.toggle-btn:last-child { border-radius: 0 var(--radius-sm) var(--radius-sm) 0; }
+.toggle-group .btn.secondary { border-right-width: 0; }
+.toggle-group .btn.secondary:last-child { border-right-width: 1px; }
+.toggle-btn--active { background: var(--brand); color: #fff; border-color: var(--brand); }
 .gate-blocked {
   background: var(--warn-bg);
   border: 1px solid #ecceA0;

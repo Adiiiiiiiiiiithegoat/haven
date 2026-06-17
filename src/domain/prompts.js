@@ -28,7 +28,7 @@ The "situation" fields you can populate:
 - reasonForThreat: why they're facing housing loss, or null
 - dateOfThreat: ISO date they expect to ACTUALLY lose the home (drives the 56-day calc), or null
 - localCouncil: name of their local council, or null
-- household: { "adults": number, "children": number, "vulnerabilityOrDisability": string|null } or null
+- household: { "adults": number, "children": number, "vulnerabilityOrDisability": string|null } or null  (when asking, say "in your household" not "live with you" — include the user themselves)
 - priorCouncilContact: { "contacted": boolean, "reference": string|null } or null
 - safetyFlag: "none" | "domesticAbuse" | "acuteDistress"
 
