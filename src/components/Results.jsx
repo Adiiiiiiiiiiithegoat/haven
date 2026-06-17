@@ -1,6 +1,6 @@
 // Results view — renders Tier 1 outputs as clean components (not a chat wall).
 // Each output is its OWN focused call (§3). They run in parallel and render as they land.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { callLLM } from "../api/llm.js";
 import { parseModelJSON } from "../api/parseModelJSON.js";
 import {
@@ -12,12 +12,13 @@ import {
   crfPrecheckCall,
   landlordDraftCall,
 } from "../domain/prompts.js";
-import { Loading, ErrorRetry, useLazyCall } from "./_shared.jsx";
+import { Loading, ErrorRetry, useLazyCall, asText } from "./_shared.jsx";
 import WontDecide from "./WontDecide.jsx";
 
 // Generic loader for one focused JSON call. Returns {data, error, loading, reload}.
 function useFocusedCall(buildCall, situation, validate) {
   const [state, setState] = useState({ data: null, error: null, loading: true });
+  const ranRef = useRef(false);
 
   function run() {
     setState({ data: null, error: null, loading: true });
@@ -39,6 +40,10 @@ function useFocusedCall(buildCall, situation, validate) {
   }
 
   useEffect(() => {
+    // Guard against React 18 StrictMode running mount effects twice (which would
+    // fire every result call twice and hammer the rate limit).
+    if (ranRef.current) return;
+    ranRef.current = true;
     run();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -167,8 +172,8 @@ function ActionPlan({ situation }) {
         <ol className="steps">
           {data.steps.map((s, i) => (
             <li key={i}>
-              <div className="what">{s.step}</div>
-              <div className="why">{s.why}</div>
+              <div className="what">{asText(s.step)}</div>
+              <div className="why">{asText(s.why)}</div>
             </li>
           ))}
         </ol>
@@ -209,10 +214,10 @@ function OptionsLadder({ situation }) {
               </span>
               <div>
                 <div className="ladder-option">
-                  {o.option}
+                  {asText(o.option)}
                   {o.status === "closed" && <span className="tag-closed">no longer applies</span>}
                 </div>
-                <div className="ladder-why">{o.why}</div>
+                <div className="ladder-why">{asText(o.why)}</div>
               </div>
             </li>
           ))}

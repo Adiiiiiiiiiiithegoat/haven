@@ -3,6 +3,22 @@ import React, { useState, useCallback } from "react";
 import { callLLM } from "../api/llm.js";
 import { parseModelJSON } from "../api/parseModelJSON.js";
 
+// Defensive: coerce a model-supplied value to renderable text. Guards against the model
+// occasionally returning an object/array where a string was asked for (which would
+// otherwise crash React with "Objects are not valid as a React child").
+export function asText(v) {
+  if (v == null) return "";
+  if (typeof v === "string") return v;
+  if (typeof v === "number" || typeof v === "boolean") return String(v);
+  if (Array.isArray(v)) return v.map(asText).filter(Boolean).join("; ");
+  if (typeof v === "object") {
+    return (
+      v.text || v.detail || v.point || v.step || v.label || v.value || JSON.stringify(v)
+    );
+  }
+  return String(v);
+}
+
 export function Loading({ label }) {
   return (
     <p className="loading" aria-live="polite">

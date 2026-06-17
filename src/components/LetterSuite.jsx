@@ -2,7 +2,7 @@
 // Gated generation (3.1) → strength meter (3.2) → letter w/ anti-gatekeeping line (3.3)
 // → packet (3.4) → multi-channel (3.5) → what-happens-next (3.6).
 // Human-in-the-loop: the user supplies every fact, edits freely, and sends it themselves.
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { mergeSituation } from "../domain/situation.js";
 import { LETTER_SLOTS } from "../domain/letterSlots.js";
 import {
@@ -12,12 +12,16 @@ import {
   multiChannelCall,
   whatHappensNextCall,
 } from "../domain/prompts.js";
-import { Loading, ErrorRetry, useLazyCall } from "./_shared.jsx";
+import { Loading, ErrorRetry, useLazyCall, asText } from "./_shared.jsx";
 
-// Auto-run a lazy call once on mount.
+// Auto-run a lazy call once on mount (ref-guarded against React 18 StrictMode
+// double-invoking mount effects, which would fire each call twice).
 function useAutoCall(callSpec, opts) {
   const lazy = useLazyCall();
+  const ranRef = useRef(false);
   useEffect(() => {
+    if (ranRef.current) return;
+    ranRef.current = true;
     lazy.run(callSpec, opts);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -254,13 +258,13 @@ function StrengthMeter({ situation }) {
             </h2>
             <span className={`pill ${tone}`}>honest assessment</span>
           </div>
-          <p style={{ marginTop: 6 }}>{data.reasoning}</p>
+          <p style={{ marginTop: 6 }}>{asText(data.reasoning)}</p>
           {Array.isArray(data.howToStrengthen) && data.howToStrengthen.length > 0 && (
             <>
               <p style={{ marginBottom: 4, fontWeight: 650 }}>What would strengthen it:</p>
               <ul className="bullets">
                 {data.howToStrengthen.map((h, i) => (
-                  <li key={i}>{h}</li>
+                  <li key={i}>{asText(h)}</li>
                 ))}
               </ul>
             </>
@@ -340,13 +344,13 @@ function Packet({ situation }) {
           <h3 className="sub">Documents to attach or bring</h3>
           <ul className="bullets">
             {data.documents.map((d, i) => (
-              <li key={i}>{d}</li>
+              <li key={i}>{asText(d)}</li>
             ))}
           </ul>
           {data.phonePhrase && (
             <>
               <h3 className="sub">Say this when you call</h3>
-              <blockquote className="say-this">“{data.phonePhrase}”</blockquote>
+              <blockquote className="say-this">“{asText(data.phonePhrase)}”</blockquote>
             </>
           )}
           {Array.isArray(data.ifKnockedBack) && data.ifKnockedBack.length > 0 && (
@@ -354,7 +358,7 @@ function Packet({ situation }) {
               <h3 className="sub">If they turn you away or delay</h3>
               <ul className="bullets">
                 {data.ifKnockedBack.map((d, i) => (
-                  <li key={i}>{d}</li>
+                  <li key={i}>{asText(d)}</li>
                 ))}
               </ul>
             </>
@@ -388,16 +392,16 @@ function MultiChannel({ situation }) {
       {data && (
         <>
           <h3 className="sub">📞 Phone script (~30 seconds)</h3>
-          <blockquote className="say-this">{data.phoneScript}</blockquote>
+          <blockquote className="say-this">{asText(data.phoneScript)}</blockquote>
           <div className="draft-actions" style={{ marginBottom: 14 }}>
-            <CopyButton text={data.phoneScript} label="Copy script" />
+            <CopyButton text={asText(data.phoneScript)} label="Copy script" />
           </div>
           {Array.isArray(data.talkingPoints) && data.talkingPoints.length > 0 && (
             <>
               <h3 className="sub">🧍 In person — talking points</h3>
               <ul className="bullets">
                 {data.talkingPoints.map((t, i) => (
-                  <li key={i}>{t}</li>
+                  <li key={i}>{asText(t)}</li>
                 ))}
               </ul>
             </>
@@ -432,10 +436,10 @@ function WhatHappensNext({ situation }) {
           <ol className="timeline">
             {data.steps.map((s, i) => (
               <li key={i} className={i === 0 ? "current" : ""}>
-                <span className="stage-label">{s.stage}</span>
-                {s.detail && <div className="stage-detail">{s.detail}</div>}
+                <span className="stage-label">{asText(s.stage)}</span>
+                {s.detail && <div className="stage-detail">{asText(s.detail)}</div>}
                 {s.ifItGoesWrong && (
-                  <div className="if-wrong">⚠ If this doesn't happen: {s.ifItGoesWrong}</div>
+                  <div className="if-wrong">⚠ If this doesn't happen: {asText(s.ifItGoesWrong)}</div>
                 )}
               </li>
             ))}
@@ -445,7 +449,7 @@ function WhatHappensNext({ situation }) {
               <h3 className="sub">Red flags you're being mistreated</h3>
               <ul className="bullets">
                 {data.redFlags.map((r, i) => (
-                  <li key={i}>{r}</li>
+                  <li key={i}>{asText(r)}</li>
                 ))}
               </ul>
             </>

@@ -19,6 +19,16 @@ if (!API_KEY) {
   );
 }
 
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// How many seconds Groq asks us to wait on a 429, from header or body message.
+function retryAfterSeconds(res, bodyText) {
+  const header = Number(res.headers.get("retry-after"));
+  if (Number.isFinite(header) && header > 0) return header;
+  const m = (bodyText || "").match(/try again in ([\d.]+)s/i);
+  return m ? Number(m[1]) : null;
+}
+
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: "1mb" }));
@@ -47,18 +57,31 @@ app.post("/api/llm", async (req, res) => {
     // JSON mode forces strictly-valid JSON output (object top-level).
     if (json !== false) body.response_format = { type: "json_object" };
 
-    const upstream = await fetch(GROQ_URL, {
-      method: "POST",
-      headers: {
-        "content-type": "application/json",
-        authorization: `Bearer ${API_KEY}`,
-      },
-      body: JSON.stringify(body),
-    });
+    // Up to 2 automatic retries, but ONLY when Groq's suggested wait is short
+    // (transient per-minute limit). Long waits (daily cap) return promptly so the
+    // UI can show a friendly "try again later" instead of hanging.
+    const SHORT_WAIT = 8;
+    let upstream;
+    for (let attempt = 0; attempt <= 2; attempt++) {
+      upstream = await fetch(GROQ_URL, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          authorization: `Bearer ${API_KEY}`,
+        },
+        body: JSON.stringify(body),
+      });
+      if (upstream.status !== 429 || attempt === 2) break;
+      const txt = await upstream.clone().text();
+      const wait = retryAfterSeconds(upstream, txt);
+      if (wait == null || wait > SHORT_WAIT) break; // don't hang on long/daily limits
+      console.log(`[HAVEN] 429 — retrying in ${wait}s (attempt ${attempt + 1})`);
+      await sleep((wait + 0.5) * 1000);
+    }
 
     const data = await upstream.json();
     if (!upstream.ok) {
-      console.error("[HAVEN] Groq error:", upstream.status, data);
+      console.error("[HAVEN] Groq error:", upstream.status, data && data.error);
       return res.status(upstream.status).json({ error: data });
     }
     res.json(data);
