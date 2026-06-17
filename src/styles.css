@@ -341,6 +341,75 @@ textarea.intake-input { min-height: 120px; }
 .muted { color: var(--ink-faint); font-size: 0.85rem; }
 .section-spacer { height: 4px; }
 
+/* ---------- Tier 2: group heading ---------- */
+.group-heading {
+  margin: 28px 4px 2px;
+  font-size: 0.74rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  font-weight: 800;
+  color: var(--ink-faint);
+}
+
+/* ---------- 2.1 Options ladder ---------- */
+.ladder { list-style: none; margin: 6px 0 0; padding: 0; }
+.ladder li {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--line);
+}
+.ladder li:last-child { border-bottom: none; }
+.ladder-rank {
+  flex: 0 0 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  font-weight: 700;
+  font-size: 0.9rem;
+  background: var(--brand);
+  color: #fff;
+}
+.ladder li.closed .ladder-rank { background: var(--surface-soft); color: var(--ink-faint); }
+.ladder-option { font-weight: 650; }
+.ladder li.closed .ladder-option {
+  text-decoration: line-through;
+  text-decoration-color: var(--ink-faint);
+  color: var(--ink-faint);
+}
+.tag-closed {
+  text-decoration: none;
+  display: inline-block;
+  margin-left: 8px;
+  font-size: 0.66rem;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--warn-ink);
+  background: var(--warn-bg);
+  padding: 2px 8px;
+  border-radius: 999px;
+  vertical-align: middle;
+}
+.ladder-why { color: var(--ink-soft); font-size: 0.92rem; margin-top: 2px; }
+.ladder li.closed .ladder-why { text-decoration: none; }
+
+/* ---------- 2.4 Landlord drafter ---------- */
+.draft-note {
+  background: var(--brand-soft);
+  border: 1px solid #bcdcd4;
+  border-radius: var(--radius-sm);
+  padding: 12px 14px;
+  font-size: 0.9rem;
+  color: var(--ink-soft);
+  margin-bottom: 10px;
+}
+.draft-area { min-height: 220px; font-size: 0.95rem; line-height: 1.5; }
+.draft-actions { display: flex; gap: 8px; margin-top: 10px; }
+.draft-actions .btn { width: auto; flex: 1; }
+
 .dots span {
   display: inline-block; width: 6px; height: 6px; margin: 0 2px;
   background: var(--ink-faint); border-radius: 50%;

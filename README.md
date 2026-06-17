@@ -55,4 +55,6 @@ against the real prompts. Needs `GROQ_API_KEY` in `.env`. Exits non-zero on fail
 
 ## Status
 
-Tier 1 (core product) is built and self-tested. Tiers 2 and 3 are not yet started.
+Tier 1 (core product) and Tier 2 (reasoning depth — options ladder, jargon decoder,
+CRF eligibility pre-check, landlord message drafter) are built and self-tested. Tier 3 is
+not yet started.

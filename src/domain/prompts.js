@@ -136,3 +136,105 @@ Return STRICT JSON only, an object whose "steps" array has EXACTLY 3 items, this
   ];
   return { system, messages, maxTokens: 600 };
 }
+
+// ========================= TIER 2 — Reasoning depth =========================
+
+// ---------- 2.1 Options ladder ----------
+export function optionsLadderCall(situation) {
+  const system = buildSystemPrompt(
+    `TASK: Produce a ranked "ladder" of realistic pathways for THIS user's exact situation, most-protective / strongest first. For each, mark "status": "available" (a route they can genuinely take now) or "closed" (a route that no longer applies under the post-1-May-2026 law, or that doesn't fit their facts).
+
+Be honest: SHOW closed options rather than hiding them, with a one-line "why" it's closed — this is the point. The classic CLOSED option post-reform is challenging or relying on the old Section 21 "no-fault" process (abolished). Never present a closed/old-law route as available.
+
+Keep each "option" short and plain-English. Order available options by how much they protect the user.
+
+Return STRICT JSON only, an object with an "options" array, this shape:
+{
+  "options": [
+    { "option": "short pathway name", "status": "available", "why": "one plain-English line" },
+    { "option": "...", "status": "closed", "why": "one line on why it no longer applies" }
+  ]
+}`
+  );
+  const messages = [
+    {
+      role: "user",
+      content: `${situationBlock(situation)}\n\nProduce the options ladder now.`,
+    },
+  ];
+  return { system, messages, maxTokens: 900 };
+}
+
+// ---------- 2.2 Jargon decoder ----------
+export function jargonDecodeCall(term, situation) {
+  const system = buildSystemPrompt(
+    `TASK: The user pasted a confusing housing word, phrase, or line from a letter. Explain it in plain English, ACCURATE to the post-1-May-2026 law. Short and calm — decode any jargon, don't add new jargon.
+
+If the term belongs to the abolished Section 21 "no-fault" system, say plainly that this is no longer how eviction works in England. If it's a real current step (e.g. "possession order"), explain it correctly: a possession order is what a landlord must get from a COURT, after a hearing, before anyone can be made to leave — a notice alone is not enough.
+
+Return STRICT JSON only, this shape:
+{
+  "term": "the exact term you're explaining",
+  "plainEnglish": "2-4 short sentences in plain English",
+  "whyItMatters": "one line on what it means for them right now",
+  "verifyWith": "who to check with for free, e.g. 'Shelter or Citizens Advice'"
+}`
+  );
+  const ctx = situation ? `\n\nFor light context only, the user's situation:\n${JSON.stringify(situation)}` : "";
+  const messages = [
+    {
+      role: "user",
+      content: `Please explain this term/line in plain English: """${term}"""${ctx}`,
+    },
+  ];
+  return { system, messages, maxTokens: 600 };
+}
+
+// ---------- 2.3 CRF eligibility pre-check ----------
+export function crfPrecheckCall(situation) {
+  const system = buildSystemPrompt(
+    `TASK: Reason about whether the user MAY qualify for the Crisis and Resilience Fund (CRF) Housing Payments (this replaced Discretionary Housing Payments on 1 April 2026).
+
+The GATE: to qualify you must ALREADY receive Housing Benefit OR the housing element of Universal Credit. If we don't know whether they do, say it depends on that gate. The CRF is discretionary (the council decides) and is applied for VIA THE LOCAL COUNCIL.
+
+CRITICAL FRAMING: NEVER say "you qualify". Only ever "you may qualify" / "you might be eligible". This is a pre-check, not a decision.
+
+Return STRICT JSON only, this shape:
+{
+  "mayQualify": "possibly" | "unclear" | "unlikely",
+  "gatingFactor": "the single thing that decides it — whether they get Housing Benefit or the UC housing element",
+  "reasoning": "2-3 short sentences, strictly in 'you may qualify' framing, never a guarantee",
+  "nextStep": "apply via your local council — name the council if known"
+}`
+  );
+  const messages = [
+    {
+      role: "user",
+      content: `${situationBlock(situation)}\n\nGive the CRF pre-check now.`,
+    },
+  ];
+  return { system, messages, maxTokens: 600 };
+}
+
+// ---------- 2.4 Landlord message drafter ----------
+// Returns MARKDOWN prose (json: false) — the user edits and sends it, never the app.
+export function landlordDraftCall(situation) {
+  const system = buildSystemPrompt(
+    `TASK: Draft a short, realistic message the user could send to their LANDLORD or letting agent — an early, good-faith approach proposing a way forward (e.g. a hardship/payment-plan conversation, or asking to discuss options) to try to avoid court.
+
+Rules:
+- Polite, factual, calm. Plain language — NOT amateur legalese.
+- Propose something constructive and specific where the situation allows (e.g. a realistic payment plan if there are arrears).
+- The USER sends and edits this themselves — write it as a ready-to-edit draft in the first person.
+- Do not invent facts not in the situation; leave a clearly-marked placeholder like [amount] where a number is unknown.
+
+Output the draft as MARKDOWN prose only — NO JSON, no preamble, no commentary. Start with a subject line, then the message body.`
+  );
+  const messages = [
+    {
+      role: "user",
+      content: `${situationBlock(situation)}\n\nWrite the draft message to the landlord now.`,
+    },
+  ];
+  return { system, messages, maxTokens: 700, json: false };
+}
