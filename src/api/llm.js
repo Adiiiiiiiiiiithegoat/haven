@@ -33,11 +33,16 @@ export async function callLLM(messages, systemPrompt, options = {}) {
     if (res.status === 429) {
       throw new Error("The free AI rate limit was hit. Wait a few seconds, then try again.");
     }
+    // The proxy forwards errors as { error: <value> }, where <value> is either a
+    // plain string (our own messages) or the provider's error object
+    // ({ error: { message } } from Groq). Dig out the most specific human-readable
+    // message so the real cause (e.g. a decommissioned model) reaches the user.
     const detail = await res.json().catch(() => ({}));
+    const e = detail && detail.error;
     const friendly =
-      typeof detail.error === "string"
-        ? detail.error
-        : "Something went wrong reaching the AI. Please try again in a moment.";
+      (typeof e === "string" && e) ||
+      (e && (e.message || (e.error && e.error.message))) ||
+      "Something went wrong reaching the AI. Please try again in a moment.";
     throw new Error(friendly);
   }
 

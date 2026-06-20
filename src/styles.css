@@ -140,6 +140,7 @@ body {
 
 textarea.intake-input, input.text-input {
   width: 100%;
+  min-width: 0;
   font: inherit;
   color: var(--ink);
   border: 1px solid var(--line);
@@ -240,7 +241,7 @@ select.text-input:focus {
   border: 2px solid var(--line);
 }
 .timeline li.done::before { background: var(--brand); border-color: var(--brand); }
-.timeline li.current::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(200,119,46,0.18); }
+.timeline li.current::before { background: var(--accent); border-color: var(--accent); box-shadow: 0 0 0 4px rgba(45, 106, 79, 0.18); }
 .timeline .stage-label { font-weight: 700; }
 .timeline li.current .stage-label { color: var(--brand-deep); }
 .timeline .stage-detail { color: var(--ink-soft); font-size: 0.94rem; }

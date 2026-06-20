@@ -155,16 +155,18 @@ function NoticeCheck({ situation }) {
           {data && (
             <>
               <div className="verdict-head">
-                <h2 style={{ margin: 0 }}>{data.verdict}</h2>
+                <h2 style={{ margin: 0 }}>{asText(data.verdict)}</h2>
                 {data.confidence && (
-                  <span className={`pill ${data.confidence}`}>{data.confidence} confidence</span>
+                  <span className={`pill ${data.confidence}`}>
+                    {asText(data.confidence)} confidence
+                  </span>
                 )}
               </div>
-              <p style={{ marginBottom: 0 }}>{data.reasoning}</p>
+              <p style={{ marginBottom: 0 }}>{asText(data.reasoning)}</p>
               {data.verifyWith && (
                 <p className="verify-note">
                   ✔ This isn't legal advice. Verify it for free with{" "}
-                  <strong>{data.verifyWith}</strong>.
+                  <strong>{asText(data.verifyWith)}</strong>.
                 </p>
               )}
               <button
@@ -198,19 +200,14 @@ function Timeline({ situation }) {
         <>
           <ol className="timeline">
             {data.stages.map((s, i) => {
-              const cls =
-                i < data.currentStageIndex
-                  ? "done"
-                  : i === data.currentStageIndex
-                  ? "current"
-                  : "";
+              // Coerce defensively — the model occasionally returns the index as a string.
+              const current = Number(data.currentStageIndex) || 0;
+              const cls = i < current ? "done" : i === current ? "current" : "";
               return (
                 <li key={i} className={cls}>
-                  <span className="stage-label">{s.label}</span>
-                  {i === data.currentStageIndex && (
-                    <span className="you-are-here">you are here</span>
-                  )}
-                  {s.detail && <div className="stage-detail">{s.detail}</div>}
+                  <span className="stage-label">{asText(s?.label)}</span>
+                  {i === current && <span className="you-are-here">you are here</span>}
+                  {s?.detail && <div className="stage-detail">{asText(s.detail)}</div>}
                 </li>
               );
             })}
@@ -247,7 +244,7 @@ function Clock({ data }) {
       </span>
       {data.thresholdNote && (
         <p className="lbl" style={{ marginTop: 10 }}>
-          {data.thresholdNote}
+          {asText(data.thresholdNote)}
         </p>
       )}
     </div>
@@ -360,12 +357,12 @@ function CrfPrecheck({ situation }) {
           </div>
           {data.gatingFactor && (
             <p style={{ marginBottom: 6 }}>
-              <strong>What decides it:</strong> {data.gatingFactor}
+              <strong>What decides it:</strong> {asText(data.gatingFactor)}
             </p>
           )}
-          {data.reasoning && <p style={{ marginTop: 0 }}>{data.reasoning}</p>}
+          {data.reasoning && <p style={{ marginTop: 0 }}>{asText(data.reasoning)}</p>}
           {data.nextStep && (
-            <p className="verify-note">➜ {data.nextStep}</p>
+            <p className="verify-note">➜ {asText(data.nextStep)}</p>
           )}
         </>
       )}
@@ -409,15 +406,15 @@ function JargonDecoder({ situation }) {
       )}
       {data && (
         <div style={{ marginTop: 14 }}>
-          <h2 style={{ margin: "0 0 4px" }}>{data.term}</h2>
-          <p style={{ marginTop: 0 }}>{data.plainEnglish}</p>
+          <h2 style={{ margin: "0 0 4px" }}>{asText(data.term)}</h2>
+          <p style={{ marginTop: 0 }}>{asText(data.plainEnglish)}</p>
           {data.whyItMatters && (
             <p style={{ marginBottom: 6 }}>
-              <strong>What it means for you:</strong> {data.whyItMatters}
+              <strong>What it means for you:</strong> {asText(data.whyItMatters)}
             </p>
           )}
           {data.verifyWith && (
-            <p className="verify-note">✔ Not sure? Check it for free with {data.verifyWith}.</p>
+            <p className="verify-note">✔ Not sure? Check it for free with {asText(data.verifyWith)}.</p>
           )}
         </div>
       )}
