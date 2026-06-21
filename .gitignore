@@ -24,3 +24,8 @@ npm-debug.log*
 .idea/
 
 .vercel
+
+# Large media (too big for GitHub)
+*.mp4
+*.MOV
+*.mov
